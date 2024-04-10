@@ -2,41 +2,109 @@
 // Created by anton on 10.04.2024.
 //
 
+#include <cmath>
 #include <sstream>
 #include "Color.h"
 #include "cinttypes"
 #include "vector"
 #include "algorithm"
-void Color::ConvertRGBtoHSV()
+#include "iomanip"
+
+//Convert RGB to HSL based on https://www.rapidtables.com/convert/color/rgb-to-hsl.html
+void Color::ConvertRGBtoHSL()
 {
     float normalizedR=r/255.0;
     float normalizedG=g/255.0;
     float normalizedB=b/255.0;
     float cMax=std::max({normalizedR,normalizedG,normalizedB});
     float cMin=std::min({normalizedR,normalizedG,normalizedB});
-    float delta=cMax+cMin;
+    float delta=cMax-cMin;
+    float rC=(cMax-normalizedR)/delta;
+    float bC=(cMax-normalizedB)/delta;
+    float gC=(cMax-normalizedG)/delta;
+    float hPrim=0;
     if(delta==0)
     {
-        hue=0;
+        hPrim=0;
     }else if(cMax==normalizedR)
     {
-        hue=60.0*(int((normalizedG-normalizedB)/delta)%6);
+        hPrim=bC-gC;
+
     } else if (cMax==normalizedG)
     {
-        hue=60.0*(((normalizedB-normalizedR)/delta)+2);
+        hPrim=rC-bC;
     } else if (cMax==normalizedB)
     {
-        hue=60.0*(((normalizedR-normalizedG)/delta)+4);
+        hPrim=gC-rC;
     }
-    if(cMax==0){
+    hue=hPrim*60;
+    if(hue<0.0)
+    {
+        hue=360+hue;
+    }
+    lightness=(cMax+cMin)/2;
+    if(delta==0){
         saturation=0;
     } else
     {
-        saturation=delta/cMax;
+        saturation=delta/(1- std::fabs(2*lightness-1));
     }
-    lightness=cMax;
-}
 
+}
+//Convert HSL to RGB based on https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+void Color::ConvertHSLtoRGB() {
+    float C=(1-std::fabs((2*lightness)-1))*saturation;
+    int i=hue/60;
+    float X=C*(1-abs((i%2)-1));
+    float m=lightness-(C/2);
+    switch (i) {
+        case 0: {
+            r = (C+m)*255;
+            g = (X+m)*255;
+            b = m*255;
+            break;
+        }
+        case 1:
+        {
+            r = (X+m)*255;
+            g = (C+m)*255;
+            b = m*255;
+            break;
+            }
+        case 2:
+        {
+            r = m*255;
+            g = (C+m)*255;
+            b = (X+m)*255;
+            break;
+        }
+
+        case 3:
+        {
+            r = m*255;
+            g = (X+m)*255;
+            b = (C+m)*255;
+            break;
+        }
+        case 4:
+        {
+            r = (X+m)*255;
+            g = m*255;
+            b = (C+m)*255;
+            break;
+        }
+        case 5:
+        {
+            r = (C+m)*255;
+            g = m*255;
+            b = (X+m)*255;
+            break;
+        }
+        default:
+            std::cerr<<"incorect HSV color"<<std::endl;
+            break;
+    }
+}
 
 Color::Color(std::string colorString,ColorFormat format)
 {
@@ -69,7 +137,7 @@ Color::Color(std::string colorString,ColorFormat format)
         }
         case DECIMAL:
         {
-            size_t pos = 0;
+            size_t pos;
             std::string value;
             std::string delimiter = ",";
             std::vector<unsigned int> values;
@@ -94,17 +162,33 @@ Color::Color(std::string colorString,ColorFormat format)
             break;
         }
     }
-    ConvertRGBtoHSV();
-    std::cout<< *this<<std::endl;
+
+    ConvertRGBtoHSL();
+    std::cout<<*this<<std::endl;
 }
+//Overloaded ostream operator for printing
 std::ostream& operator<<(std::ostream& stream, const Color& color)
 {
     stream << "Red: " << color.r << std::endl;
     stream << "Green: " << color.g << std::endl;
     stream << "Blue: " << color.b << std::endl;
     stream << "Alpha: " << color.alpha << std::endl;
-    stream << "Hex: " << "#" << std::hex << color.r  << color.g
-              << color.b  << color.alpha << std::dec << std::endl;
+    //Adding padding in cases when hex representation needs leading 0
+    std::stringstream stringStreamR;
+    stringStreamR << std::setfill ('0') << std::setw(2)
+                  << std::hex << color.r;
+    std::stringstream stringStreamG;
+    stringStreamG << std::setfill ('0') << std::setw(2)
+                  << std::hex << color.g;
+    std::stringstream stringStreamB;
+    stringStreamB << std::setfill ('0') << std::setw(2)
+                  << std::hex << color.b;
+    std::stringstream stringStreamAlpha;
+    stringStreamB << std::setfill ('0') << std::setw(2)
+                  << std::hex << color.alpha;
+
+    stream << "Hex: " << "#"  << stringStreamR.str()  << stringStreamG.str()
+           << stringStreamB.str()  <<stringStreamAlpha.str() << std::dec << std::endl;
     stream << "Hue: " << color.hue << std::endl;
     stream << "Saturation: " << color.saturation << std::endl;
     stream << "Lightness: " << color.lightness << std::endl;

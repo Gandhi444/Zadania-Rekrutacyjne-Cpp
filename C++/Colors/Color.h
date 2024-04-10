@@ -27,8 +27,8 @@ public:
     float saturation=0;
     float lightness=0;
 
-    void ConvertRGBtoHSV();
-
+    void ConvertRGBtoHSL();
+    void ConvertHSLtoRGB();
     friend std::ostream& operator<<(std::ostream& stream, const Color& color);
 };
 
